@@ -1,19 +1,59 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import AlbumCard from "./AlbumCard";
-import album1 from "@/assets/album1.jpg";
-import album2 from "@/assets/album2.jpg";
-import album3 from "@/assets/album3.jpg";
-import album4 from "@/assets/album4.jpg";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Album {
+  id: string;
+  title: string;
+  artist_name: string;
+  image_url: string;
+  release_year: number;
+}
 
 const MainContent = () => {
-  const recentlyPlayed = [
-    { title: "Sunset Dreams", artist: "Ambient Collective", imageUrl: album1, year: "2024" },
-    { title: "Digital Frontier", artist: "Cyber Pulse", imageUrl: album2, year: "2024" },
-    { title: "Forest Tales", artist: "Wild Harmony", imageUrl: album3, year: "2023" },
-    { title: "Street Vibes", artist: "Urban Flow", imageUrl: album4, year: "2024" },
-    { title: "Late Night Jazz", artist: "The Midnight Quartet" },
-    { title: "Electronic Dreams", artist: "Synth Master" },
-  ];
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAlbums = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('albums')
+          .select(`
+            id,
+            title,
+            image_url,
+            release_year,
+            artists (
+              name
+            )
+          `)
+          .limit(20);
+
+        if (error) {
+          console.error('Error fetching albums:', error);
+          return;
+        }
+
+        const albumsWithArtist = data?.map(album => ({
+          id: album.id,
+          title: album.title,
+          artist_name: album.artists?.name || 'Unknown Artist',
+          image_url: album.image_url,
+          release_year: album.release_year
+        })) || [];
+
+        setAlbums(albumsWithArtist);
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlbums();
+  }, []);
 
   const madeForYou = [
     { title: "Discover Weekly", artist: "Your weekly mixtape of fresh music" },
@@ -24,12 +64,15 @@ const MainContent = () => {
     { title: "Rock Mix", artist: "Rock hits and deep cuts" },
   ];
 
-  const popularAlbums = [
-    { title: "Midnight City", artist: "Various Artists", imageUrl: album1, year: "2024" },
-    { title: "Future Bass", artist: "Electronic Collective", imageUrl: album2, year: "2024" },
-    { title: "Acoustic Sessions", artist: "Indie Artists", imageUrl: album3, year: "2023" },
-    { title: "Hip Hop Now", artist: "Various Artists", imageUrl: album4, year: "2024" },
-  ];
+  if (loading) {
+    return (
+      <div className="flex-1 bg-gradient-hero">
+        <div className="p-6 flex items-center justify-center h-full">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 bg-gradient-hero">
@@ -41,14 +84,14 @@ const MainContent = () => {
             
             {/* Quick access grid */}
             <div className="grid grid-cols-3 gap-4 mb-8">
-              {recentlyPlayed.slice(0, 6).map((item, index) => (
+              {albums.slice(0, 6).map((album) => (
                 <div
-                  key={index}
+                  key={album.id}
                   className="bg-card/80 backdrop-blur-sm rounded-md flex items-center overflow-hidden hover:bg-accent/50 transition-colors cursor-pointer group"
                 >
                   <div className="w-16 h-16 bg-muted flex-shrink-0">
-                    {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                    {album.image_url ? (
+                      <img src={album.image_url} alt={album.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-gradient-card flex items-center justify-center">
                         <span className="text-muted-foreground">♪</span>
@@ -56,7 +99,7 @@ const MainContent = () => {
                     )}
                   </div>
                   <div className="px-4 flex-1">
-                    <p className="font-medium text-foreground text-sm truncate">{item.title}</p>
+                    <p className="font-medium text-foreground text-sm truncate">{album.title}</p>
                   </div>
                 </div>
               ))}
@@ -81,13 +124,13 @@ const MainContent = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-foreground mb-4">Recently played</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {recentlyPlayed.map((item, index) => (
+              {albums.slice(0, 6).map((album) => (
                 <AlbumCard
-                  key={index}
-                  title={item.title}
-                  artist={item.artist}
-                  imageUrl={item.imageUrl}
-                  year={item.year}
+                  key={album.id}
+                  title={album.title}
+                  artist={album.artist_name}
+                  imageUrl={album.image_url}
+                  year={album.release_year?.toString()}
                 />
               ))}
             </div>
@@ -97,13 +140,13 @@ const MainContent = () => {
           <section className="mb-8">
             <h2 className="text-2xl font-bold text-foreground mb-4">Popular albums</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {popularAlbums.map((item, index) => (
+              {albums.slice(4, 8).map((album) => (
                 <AlbumCard
-                  key={index}
-                  title={item.title}
-                  artist={item.artist}
-                  imageUrl={item.imageUrl}
-                  year={item.year}
+                  key={album.id}
+                  title={album.title}
+                  artist={album.artist_name}
+                  imageUrl={album.image_url}
+                  year={album.release_year?.toString()}
                 />
               ))}
             </div>
